@@ -1,0 +1,484 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central Limit Theorem Simulator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .control-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input, button {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .chart {
+            flex: 1;
+            min-width: 300px;
+            height: 300px;
+            position: relative;
+            border: 1px solid #ddd;
+            background-color: white;
+        }
+        .chart-title {
+            text-align: center;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+        .stats {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        .progress-bar {
+            height: 10px;
+            background-color: #eee;
+            border-radius: 5px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .progress {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .explanation {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9f7ef;
+            border-radius: 5px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Central Limit Theorem Simulator</h1>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="distribution">Population Distribution:</label>
+                <select id="distribution">
+                    <option value="uniform">Uniform</option>
+                    <option value="exponential">Exponential</option>
+                    <option value="bimodal">Bimodal</option>
+                    <option value="skewed">Skewed</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="sampleSize">Sample Size (n):</label>
+                <input type="range" id="sampleSize" min="1" max="100" value="10">
+                <span id="sampleSizeValue">10</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="numSamples">Number of Samples:</label>
+                <input type="range" id="numSamples" min="10" max="5000" value="1000">
+                <span id="numSamplesValue">1000</span>
+            </div>
+            
+            <div class="control-group">
+                <button id="simulateBtn">Run Simulation</button>
+                <button id="resetBtn">Reset</button>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress" id="progress"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-wrapper">
+                <div class="chart">
+                    <canvas id="populationChart"></canvas>
+                </div>
+                <div class="chart-title">Population Distribution</div>
+            </div>
+            
+            <div class="chart-wrapper">
+                <div class="chart">
+                    <canvas id="samplingChart"></canvas>
+                </div>
+                <div class="chart-title">Sampling Distribution of the Mean</div>
+            </div>
+        </div>
+        
+        <div class="stats" id="stats">
+            <h3>Statistics</h3>
+            <div id="statsContent">Run the simulation to see statistics</div>
+        </div>
+        
+        <div class="explanation">
+            <h3>What is the Central Limit Theorem?</h3>
+            <p>The Central Limit Theorem states that if you take sufficiently large random samples from any population (with finite variance), the distribution of the sample means will be approximately normally distributed, regardless of the shape of the original population distribution.</p>
+            <p>This simulator allows you to see this theorem in action by generating many random samples from different distributions and observing how their means distribute.</p>
+            <p><strong>Instructions:</strong></p>
+            <ol>
+                <li>Select a population distribution</li>
+                <li>Adjust the sample size (n) - try both small and large values</li>
+                <li>Set the number of samples to draw</li>
+                <li>Click "Run Simulation" and observe how the sampling distribution becomes more normal as sample size increases</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // DOM elements
+        const distributionSelect = document.getElementById('distribution');
+        const sampleSizeInput = document.getElementById('sampleSize');
+        const sampleSizeValue = document.getElementById('sampleSizeValue');
+        const numSamplesInput = document.getElementById('numSamples');
+        const numSamplesValue = document.getElementById('numSamplesValue');
+        const simulateBtn = document.getElementById('simulateBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const progressBar = document.getElementById('progress');
+        const statsContent = document.getElementById('statsContent');
+        
+        // Canvas contexts
+        const populationCanvas = document.getElementById('populationChart');
+        const samplingCanvas = document.getElementById('samplingChart');
+        const populationCtx = populationCanvas.getContext('2d');
+        const samplingCtx = samplingCanvas.getContext('2d');
+        
+        // Set canvas dimensions for better resolution
+        function resizeCanvas() {
+            const setCanvasDimensions = (canvas) => {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * 2;
+                canvas.height = rect.height * 2;
+                const ctx = canvas.getContext('2d');
+                ctx.scale(2, 2);
+            };
+            
+            setCanvasDimensions(populationCanvas);
+            setCanvasDimensions(samplingCanvas);
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Update input display values
+        sampleSizeInput.addEventListener('input', () => {
+            sampleSizeValue.textContent = sampleSizeInput.value;
+        });
+        
+        numSamplesInput.addEventListener('input', () => {
+            numSamplesValue.textContent = numSamplesInput.value;
+        });
+        
+        // Main simulation variables
+        let populationData = [];
+        let sampleMeans = [];
+        let isRunning = false;
+        
+        // Generate population data based on selected distribution
+        function generatePopulation(size = 10000) {
+            const distribution = distributionSelect.value;
+            const data = [];
+            
+            for (let i = 0; i < size; i++) {
+                let value;
+                
+                switch (distribution) {
+                    case 'uniform':
+                        value = Math.random();
+                        break;
+                    case 'exponential':
+                        value = -Math.log(Math.random()) / 2;
+                        break;
+                    case 'bimodal':
+                        // Create bimodal distribution
+                        if (Math.random() > 0.5) {
+                            value = 0.2 + Math.random() * 0.2; // First peak
+                        } else {
+                            value = 0.7 + Math.random() * 0.2; // Second peak
+                        }
+                        break;
+                    case 'skewed':
+                        // Create right-skewed distribution
+                        value = Math.pow(Math.random(), 2);
+                        break;
+                    default:
+                        value = Math.random();
+                }
+                
+                data.push(value);
+            }
+            
+            return data;
+        }
+        
+        // Draw histogram on a canvas
+        function drawHistogram(ctx, data, bins = 30, color = '#4CAF50', normalOverlay = false) {
+            const width = ctx.canvas.width / 2;
+            const height = ctx.canvas.height / 2;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            if (data.length === 0) return;
+            
+            // Find min and max values
+            const min = Math.min(...data);
+            const max = Math.max(...data);
+            const range = max - min;
+            
+            // Create bins
+            const histogram = Array(bins).fill(0);
+            const binWidth = range / bins;
+            
+            // Fill bins
+            data.forEach(value => {
+                const binIndex = Math.min(Math.floor((value - min) / binWidth), bins - 1);
+                histogram[binIndex]++;
+            });
+            
+            // Find maximum frequency for scaling
+            const maxFrequency = Math.max(...histogram);
+            
+            // Draw axes
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            
+            // X-axis
+            ctx.beginPath();
+            ctx.moveTo(40, height - 30);
+            ctx.lineTo(width - 20, height - 30);
+            ctx.stroke();
+            
+            // Y-axis
+            ctx.beginPath();
+            ctx.moveTo(40, 20);
+            ctx.lineTo(40, height - 30);
+            ctx.stroke();
+            
+            // Draw bars
+            const barWidth = (width - 60) / bins;
+            
+            ctx.fillStyle = color;
+            histogram.forEach((count, i) => {
+                const barHeight = count > 0 ? ((count / maxFrequency) * (height - 60)) : 0;
+                ctx.fillRect(
+                    40 + i * barWidth,
+                    height - 30 - barHeight,
+                    barWidth - 1,
+                    barHeight
+                );
+            });
+            
+            // Draw normal curve overlay if requested
+            if (normalOverlay && data.length > 1) {
+                // Calculate mean and standard deviation
+                const mean = data.reduce((sum, val) => sum + val, 0) / data.length;
+                const variance = data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length;
+                const stdDev = Math.sqrt(variance);
+                
+                // Draw normal curve
+                ctx.beginPath();
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 2;
+                
+                for (let x = 0; x < bins; x++) {
+                    const xVal = min + (x / bins) * range;
+                    const xPos = 40 + x * barWidth;
+                    
+                    // Normal PDF formula: (1 / (σ * √(2π))) * e^(-(x-μ)² / (2σ²))
+                    const normalY = (1 / (stdDev * Math.sqrt(2 * Math.PI))) * 
+                                   Math.exp(-Math.pow(xVal - mean, 2) / (2 * variance));
+                    
+                    // Scale to fit chart
+                    const yPos = height - 30 - (normalY * (height - 60) * stdDev * 2.5);
+                    
+                    if (x === 0) {
+                        ctx.moveTo(xPos, yPos);
+                    } else {
+                        ctx.lineTo(xPos, yPos);
+                    }
+                }
+                
+                ctx.stroke();
+            }
+            
+            // Draw labels
+            ctx.fillStyle = '#333';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            
+            // X-axis labels
+            ctx.fillText(min.toFixed(2), 40, height - 15);
+            ctx.fillText(((min + max) / 2).toFixed(2), width / 2, height - 15);
+            ctx.fillText(max.toFixed(2), width - 20, height - 15);
+            
+            // Title and statistics if it's the sampling distribution
+            if (normalOverlay) {
+                // Calculate statistics
+                const mean = data.reduce((sum, val) => sum + val, 0) / data.length;
+                const variance = data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length;
+                const stdDev = Math.sqrt(variance);
+                
+                // Update stats display
+                statsContent.innerHTML = `
+                    <p><strong>Population Mean:</strong> ${calculateMean(populationData).toFixed(4)}</p>
+                    <p><strong>Population Std Dev:</strong> ${calculateStdDev(populationData).toFixed(4)}</p>
+                    <p><strong>Sample Mean of Means:</strong> ${mean.toFixed(4)}</p>
+                    <p><strong>Sample Std Dev of Means:</strong> ${stdDev.toFixed(4)}</p>
+                    <p><strong>Theoretical Std Error:</strong> ${(calculateStdDev(populationData) / Math.sqrt(parseInt(sampleSizeInput.value))).toFixed(4)}</p>
+                `;
+            }
+        }
+        
+        // Calculate mean of array
+        function calculateMean(data) {
+            return data.reduce((sum, val) => sum + val, 0) / data.length;
+        }
+        
+        // Calculate standard deviation
+        function calculateStdDev(data) {
+            const mean = calculateMean(data);
+            return Math.sqrt(data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length);
+        }
+        
+        // Take one sample and return its mean
+        function takeSample(population, sampleSize) {
+            let sum = 0;
+            for (let i = 0; i < sampleSize; i++) {
+                const randomIndex = Math.floor(Math.random() * population.length);
+                sum += population[randomIndex];
+            }
+            return sum / sampleSize;
+        }
+        
+        // Run the simulation
+        async function runSimulation() {
+            if (isRunning) return;
+            isRunning = true;
+            simulateBtn.disabled = true;
+            
+            // Get parameters
+            const sampleSize = parseInt(sampleSizeInput.value);
+            const numSamples = parseInt(numSamplesInput.value);
+            
+            // Generate new population data
+            populationData = generatePopulation();
+            
+            // Draw population histogram
+            drawHistogram(populationCtx, populationData, 30, '#4CAF50');
+            
+            // Reset sample means
+            sampleMeans = [];
+            
+            // Take samples and calculate means
+            for (let i = 0; i < numSamples; i++) {
+                // Take batch of samples for performance
+                const batchSize = Math.min(10, numSamples - i);
+                
+                for (let j = 0; j < batchSize; j++) {
+                    const sampleMean = takeSample(populationData, sampleSize);
+                    sampleMeans.push(sampleMean);
+                }
+                
+                i += batchSize - 1;
+                
+                // Update progress
+                progressBar.style.width = `${(sampleMeans.length / numSamples) * 100}%`;
+                
+                // Draw current sampling distribution
+                drawHistogram(samplingCtx, sampleMeans, 30, '#3f51b5', true);
+                
+                // Allow UI to update
+                await new Promise(resolve => setTimeout(resolve, 1));
+            }
+            
+            isRunning = false;
+            simulateBtn.disabled = false;
+        }
+        
+        // Reset the simulation
+        function resetSimulation() {
+            if (isRunning) return;
+            
+            populationData = [];
+            sampleMeans = [];
+            progressBar.style.width = '0%';
+            
+            populationCtx.clearRect(0, 0, populationCanvas.width/2, populationCanvas.height/2);
+            samplingCtx.clearRect(0, 0, samplingCanvas.width/2, samplingCanvas.height/2);
+            
+            statsContent.innerHTML = 'Run the simulation to see statistics';
+        }
+        
+        // Event listeners
+        simulateBtn.addEventListener('click', runSimulation);
+        resetBtn.addEventListener('click', resetSimulation);
+        distributionSelect.addEventListener('change', () => {
+            if (!isRunning) resetSimulation();
+        });
+        
+        // Initial setup
+        resetSimulation();
+    </script>
+</body>
+</html>
